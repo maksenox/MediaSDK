@@ -883,6 +883,8 @@ mfxStatus MFX_CDECL VP9DECODERoutine(void *p_state, void * /* pp_param */, mfxU3
 
 #endif
 
+    UMC::AutomaticUMCMutex guard(decoder.m_mGuard);
+
     if (decoder.m_vInitPar.IOPattern & MFX_IOPATTERN_OUT_SYSTEM_MEMORY)
     {
         if (data.showFrame)
@@ -896,8 +898,6 @@ mfxStatus MFX_CDECL VP9DECODERoutine(void *p_state, void * /* pp_param */, mfxU3
             MFX_CHECK_STS(sts);
         }
     }
-
-    UMC::AutomaticUMCMutex guard(decoder.m_mGuard);
 
     decoder.m_framesStorage->DecodeFrame(data.currFrameId);
 
