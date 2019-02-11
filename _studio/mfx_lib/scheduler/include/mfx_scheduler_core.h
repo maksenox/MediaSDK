@@ -438,6 +438,25 @@ mfxU64 mfxSchedulerCore::GetHWEventCounter(void) const
 
 } // mfxU64 mfxSchedulerCore::GetHWEventCounter(void) const
 
+class RandomDelay {
+private:
+    void RandomSleep() {
+        int usec = std::rand() % 100;
+        std::this_thread::sleep_for(std::chrono::microseconds(usec));
+    }
+
+public:
+    RandomDelay()
+    {
+        RandomSleep();
+    }
+
+    ~RandomDelay()
+    {
+        RandomSleep();
+    }
+};
+
 inline
 void mfxSchedulerCore::call_pRoutine(MFX_CALL_INFO& call)
 {
@@ -445,6 +464,8 @@ void mfxSchedulerCore::call_pRoutine(MFX_CALL_INFO& call)
         call.pTask->entryPoint.pRoutineName:
         "MFX Async Task";
     mfxU64 start;
+
+    RandomDelay delay;
 
     (void)pRoutineName;
     MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_SCHED, pRoutineName);
