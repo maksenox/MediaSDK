@@ -1119,17 +1119,15 @@ VAAPIVideoCORE::DoFastCopyExtended(
         else
         {
             MFX_CHECK(m_Display, MFX_ERR_NOT_INITIALIZED);
-
             VASurfaceID *va_surf_src = (VASurfaceID*)(pSrc->Data.MemId);
             VASurfaceID *va_surf_dst = (VASurfaceID*)(pDst->Data.MemId);
             MFX_CHECK(va_surf_src != va_surf_dst, MFX_ERR_UNDEFINED_BEHAVIOR);
-
             VAImage va_img_src = {};
             VAStatus va_sts;
 
             va_sts = vaDeriveImage(m_Display, *va_surf_src, &va_img_src);
             MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
-
+#if 0 // HSD 
             {
                 MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_EXTCALL, "vaPutImage");
                 va_sts = vaPutImage(m_Display, *va_surf_dst, va_img_src.image_id,
@@ -1137,7 +1135,59 @@ VAAPIVideoCORE::DoFastCopyExtended(
                                     0, 0, roi.width, roi.height);
             }
             MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
+#else
+            VAImage va_img_dst = {};
 
+            va_sts = vaDeriveImage(m_Display, *va_surf_dst, &va_img_dst);
+            MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
+
+            void *pSrcBits = NULL;
+            void *pDstBits = NULL;
+            {
+                MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_EXTCALL, "vaMapBuffer");
+                va_sts = vaMapBuffer(m_Display, va_img_src.buf, (void **) &pSrcBits);
+            }
+            MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
+            {
+                MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_EXTCALL, "vaMapBuffer");
+                va_sts = vaMapBuffer(m_Display, va_img_dst.buf, (void **) &pDstBits);
+            }
+            MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
+
+
+            {
+                MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_HOTSPOTS, "FastCopy_vid2sys");
+                mfxStatus sts = mfxDefaultAllocatorVAAPI::SetFrameData(va_img_src, pSrc->Info.FourCC, (mfxU8*)pSrcBits, &pSrc->Data);
+                MFX_CHECK_STS(sts);
+                sts = mfxDefaultAllocatorVAAPI::SetFrameData(va_img_dst, pDst->Info.FourCC, (mfxU8*)pDstBits, &pDst->Data);
+                MFX_CHECK_STS(sts);
+
+                mfxMemId saveSrcMemId = pSrc->Data.MemId;
+                pSrc->Data.MemId = 0;
+                mfxMemId saveDstMemId = pDst->Data.MemId;
+                pDst->Data.MemId = 0;
+
+                sts = CoreDoSWFastCopy(pDst, pSrc, COPY_VIDEO_TO_SYS); // sw copy
+                MFX_CHECK_STS(sts);
+
+                pSrc->Data.MemId = saveSrcMemId;
+                pDst->Data.MemId = saveDstMemId;
+            }
+
+            {
+                MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_EXTCALL, "vaUnmapBuffer");
+                va_sts = vaUnmapBuffer(m_Display, va_img_src.buf);
+            }
+            MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
+            {
+                MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_EXTCALL, "vaUnmapBuffer");
+                va_sts = vaUnmapBuffer(m_Display, va_img_dst.buf);
+            }
+            MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
+
+            va_sts = vaDestroyImage(m_Display, va_img_dst.image_id);
+            MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
+#endif
             va_sts = vaDestroyImage(m_Display, va_img_src.image_id);
             MFX_CHECK(VA_STATUS_SUCCESS == va_sts, MFX_ERR_DEVICE_FAILED);
         }
