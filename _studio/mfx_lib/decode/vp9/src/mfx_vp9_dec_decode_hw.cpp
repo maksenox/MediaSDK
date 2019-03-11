@@ -411,7 +411,8 @@ mfxStatus VideoDECODEVP9_HW::Init(mfxVideoParam *par)
     else
     {
         m_request.AllocId = par->AllocId;
-        sts = m_core->AllocFrames(&m_request, &m_response, false);
+        bool isNeedCopy = true;
+        sts = m_core->AllocFrames(&m_request, &m_response, isNeedCopy);
     }
 
     MFX_CHECK_STS(sts);
