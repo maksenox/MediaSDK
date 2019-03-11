@@ -574,9 +574,6 @@ mfxStatus VideoDECODEVP9_HW::DecodeHeader(VideoCORE* core, mfxBitstream* bs, mfx
     mfxStatus sts = MFX_VP9_Utility::DecodeHeader(core, bs, par);
     MFX_CHECK_STS(sts);
 
-    if (par->mfx.FrameInfo.FourCC == MFX_FOURCC_P010)
-        par->mfx.FrameInfo.Shift = 1;
-
     return sts;
 }
 
@@ -749,14 +746,12 @@ mfxStatus VideoDECODEVP9_HW::GetVideoParam(mfxVideoParam *par)
     return MFX_ERR_NONE;
 }
 
-void VideoDECODEVP9_HW::UpdateVideoParam(mfxVideoParam *par, VP9DecoderFrame const & frameInfo)
+mfxStatus VideoDECODEVP9_HW::UpdateVideoParam(mfxVideoParam *par, VP9DecoderFrame const & frameInfo)
 {
-    VM_ASSERT(par);
-
-    MFX_VP9_Utility::FillVideoParam(m_core, frameInfo, par);
-
-    if (par->mfx.FrameInfo.FourCC == MFX_FOURCC_P010)
-        par->mfx.FrameInfo.Shift = 1;
+    MFX_CHECK_NULL_PTR1(par);
+    eMFXPlatform platform = m_core->GetPlatformType();
+    MFX_VP9_Utility::FillVideoParam(platform, frameInfo, *par);
+    return MFX_ERR_NONE;
 }
 
 mfxStatus VideoDECODEVP9_HW::GetDecodeStat(mfxDecodeStat *pStat)
